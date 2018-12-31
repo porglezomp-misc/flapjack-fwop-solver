@@ -124,6 +124,20 @@ pub fn reflect(code: u32) -> u32 {
         | (code >> 20 & MASK5)
 }
 
+pub fn canonicalize(x: u32) -> (u32, u8, bool) {
+    let mut result = (x, 0, false);
+    for should_reflect in &[false, true] {
+        let mut map = if *should_reflect { reflect(x) } else { x };
+        for i in 0..4 {
+            if map < result.0 {
+                result = (map, i, *should_reflect);
+            }
+            map = rotate(map);
+        }
+    }
+    result
+}
+
 pub fn apply_transform(mut x: u32, rotations: u8, should_reflect: bool) -> u32 {
     if should_reflect {
         x = reflect(x);
@@ -211,6 +225,14 @@ mod test {
                 m,
                 apply_transform_inverse(apply_transform(m, rotate, reflect), rotate, reflect)
             );
+        }
+
+        #[test]
+        fn canonical_best(m in MAPS) {
+            let (c, rot, refl) = canonicalize(m);
+            prop_assert!(c <= m);
+            prop_assert_eq!(c, apply_transform(m, rot, refl));
+            prop_assert_eq!(m, apply_transform_inverse(c, rot, refl));
         }
     }
 
