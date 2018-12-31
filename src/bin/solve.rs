@@ -7,7 +7,7 @@ use std::{
     time::Instant,
 };
 
-use fwop::{generate_map, output, parse};
+use fwop;
 
 const MASK: u32 = (1 << 25) - 1;
 
@@ -17,7 +17,9 @@ fn generate_fwopcache<P: AsRef<Path>>(path: P) -> io::Result<File> {
     let mut cache = BTreeMap::<u32, (u32, u32)>::new();
     let start = Instant::now();
     for i in 0..1 << 25 {
-        let map = generate_map(i);
+        let map = fwop::generate_map(i);
+        let (map, rot, refl) = fwop::canonicalize(map);
+        let i = fwop::apply_transform(i, rot, refl);
         cache
             .entry(map)
             .and_modify(|(x, count)| {
@@ -52,7 +54,7 @@ fn generate_fwopcache<P: AsRef<Path>>(path: P) -> io::Result<File> {
     Ok(file)
 }
 
-fn solve_from_cache(cache: &mut File, x: u32) -> io::Result<()> {
+fn solve_from_cache(cache: &mut File, x: u32) -> io::Result<u32> {
     cache.seek(io::SeekFrom::Start(x as u64 * 4))?;
     let mut buf = [0; 4];
     cache.read_exact(&mut buf).map_err(|_| {
@@ -61,23 +63,28 @@ fn solve_from_cache(cache: &mut File, x: u32) -> io::Result<()> {
             "Failed to find a solution in the cache",
         )
     })?;
-    println!("{}", output(u32::from_ne_bytes(buf)));
-    Ok(())
+    Ok(u32::from_ne_bytes(buf))
 }
 
 fn main() -> io::Result<()> {
-    let input = std::env::args()
+    let map = std::env::args()
         .nth(1)
         .ok_or(io::Error::new(
             io::ErrorKind::InvalidInput,
             "Missing argument",
         ))
-        .and_then(|s| parse(&s))?;
+        .and_then(|s| fwop::parse(&s))?;
 
+    let (map, rot, refl) = fwop::canonicalize(!map & MASK);
     static FNAME: &str = ".fwopcache";
     {
         File::open(FNAME).or_else(|_| generate_fwopcache(FNAME))?;
     }
     let mut cache = File::open(FNAME)?;
-    solve_from_cache(&mut cache, !input & MASK)
+    let solution = solve_from_cache(&mut cache, map)?;
+    println!(
+        "{}",
+        fwop::output(fwop::apply_transform_inverse(solution, rot, refl))
+    );
+    Ok(())
 }

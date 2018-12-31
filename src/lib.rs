@@ -234,6 +234,16 @@ mod test {
             prop_assert_eq!(c, apply_transform(m, rot, refl));
             prop_assert_eq!(m, apply_transform_inverse(c, rot, refl));
         }
+
+        #[test]
+        fn canonical_generate_commute(i in MAPS) {
+            let m = generate_map(i);
+            let (c, rot, refl) = canonicalize(m);
+            let i2 = apply_transform(i, rot, refl);
+            let c2 = generate_map(i2);
+            prop_assert_eq!(c, c2);
+            prop_assert_eq!(i, apply_transform_inverse(i2, rot, refl));
+        }
     }
 
     #[test]
