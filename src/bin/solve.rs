@@ -41,11 +41,11 @@ fn generate_fwopcache<P: AsRef<Path>>(path: P) -> io::Result<File> {
         (write_end - start).as_float_secs()
     );
     println!(
-        "Generated: {:.02} seconds",
+        "Generated: {:6.02} seconds",
         generate_end.duration_since(start).as_float_secs()
     );
     println!(
-        "    Wrote: {:.02} seconds",
+        "    Wrote: {:6.02} seconds",
         write_end.duration_since(generate_end).as_float_secs()
     );
     file.flush()?;
