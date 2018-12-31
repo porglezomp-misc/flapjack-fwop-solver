@@ -1,8 +1,10 @@
+#![feature(duration_float)]
 use std::{
     collections::BTreeMap,
     fs::File,
     io::{self, Read, Seek, Write},
     path::Path,
+    time::Instant,
 };
 
 use fwop::{generate_map, output, parse};
@@ -13,6 +15,7 @@ fn generate_fwopcache<P: AsRef<Path>>(path: P) -> io::Result<File> {
     println!("No game cache found, generating...");
     let mut file = File::create(path)?;
     let mut cache = BTreeMap::<u32, (u32, u32)>::new();
+    let start = Instant::now();
     for i in 0..1 << 25 {
         let map = generate_map(i);
         cache
@@ -26,10 +29,25 @@ fn generate_fwopcache<P: AsRef<Path>>(path: P) -> io::Result<File> {
             })
             .or_insert_with(|| (i, i.count_ones()));
     }
+    let generate_end = Instant::now();
     for i in 0..1 << 25 {
         let value = cache.get(&i).map(|&x| x.0).unwrap_or(0);
         file.write(&value.to_ne_bytes())?;
     }
+    let write_end = Instant::now();
+    println!(
+        "Saved {} cache entries in {:.02} seconds.",
+        cache.len(),
+        (write_end - start).as_float_secs()
+    );
+    println!(
+        "Generated: {:.02} seconds",
+        generate_end.duration_since(start).as_float_secs()
+    );
+    println!(
+        "    Wrote: {:.02} seconds",
+        write_end.duration_since(generate_end).as_float_secs()
+    );
     file.flush()?;
     Ok(file)
 }
