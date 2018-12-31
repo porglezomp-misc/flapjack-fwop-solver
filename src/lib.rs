@@ -1,9 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    fs::File,
-    io::{self, Read, Seek, Write},
-    path::Path,
-};
+use std::io;
 
 fn parse_chunk(x: &str) -> Option<u32> {
     let mut res = 0;
@@ -18,7 +13,7 @@ fn parse_chunk(x: &str) -> Option<u32> {
     Some(res)
 }
 
-fn parse(x: &str) -> io::Result<u32> {
+pub fn parse(x: &str) -> io::Result<u32> {
     if x.len() != 29 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -46,7 +41,27 @@ fn parse(x: &str) -> io::Result<u32> {
     Ok(res)
 }
 
-fn blit(mut map: u32, pos: u32) -> u32 {
+pub fn output(mut x: u32) -> String {
+    fn output_chunk(x: &mut u32, buf: &mut String) {
+        for _ in 0..5 {
+            match *x & 1 {
+                1 => buf.push('#'),
+                _ => buf.push('-'),
+            };
+            *x >>= 1;
+        }
+    }
+
+    let mut output = String::with_capacity(29);
+    output_chunk(&mut x, &mut output);
+    for _ in 0..4 {
+        output.push('|');
+        output_chunk(&mut x, &mut output);
+    }
+    output
+}
+
+pub fn blit(mut map: u32, pos: u32) -> u32 {
     if pos >= 5 {
         map ^= 1 << (pos - 5);
     }
@@ -59,6 +74,16 @@ fn blit(mut map: u32, pos: u32) -> u32 {
     }
     if pos < 20 {
         map ^= 1 << (pos + 5);
+    }
+    map
+}
+
+pub fn generate_map(code: u32) -> u32 {
+    let mut map = 0;
+    for i in 0..25 {
+        if code & 1 << i != 0 {
+            map = blit(map, i);
+        }
     }
     map
 }
@@ -92,66 +117,14 @@ fn test_blit() {
     assert_eq!(blit(0, 24), 0b1100010000000000000000000);
 }
 
-fn generate_map(code: u32) -> u32 {
-    let mut map = 0;
-    for i in 0..25 {
-        if code & 1 << i != 0 {
-            map = blit(map, i);
-        }
-    }
-    map
-}
-
 #[test]
 fn test_generate_map() {
     // This is right by manual inspection
     assert_eq!(generate_map(0b100000001000001011), 4674152);
 }
 
-fn generate_fwopcache<P: AsRef<Path>>(path: P) -> io::Result<File> {
-    let mut file = File::create(path)?;
-    let mut cache = BTreeMap::<u32, (u32, u32)>::new();
-    for i in 0..1 << 25 {
-        let map = generate_map(i);
-        cache
-            .entry(map)
-            .and_modify(|(x, count)| {
-                let new_count = i.count_ones();
-                if new_count < *count {
-                    *x = i;
-                    *count = new_count;
-                }
-            })
-            .or_insert_with(|| (i, i.count_ones()));
-    }
-    for i in 0..1 << 25 {
-        let value = cache.get(&i).map(|&x| x.0).unwrap_or(0);
-        file.write(&value.to_ne_bytes())?;
-    }
-    Ok(file)
-}
-
-fn main() -> io::Result<()> {
-    let input = std::env::args()
-        .nth(1)
-        .ok_or(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Missing argument",
-        ))
-        .and_then(|s| parse(&s))?;
-
-    static FNAME: &str = ".fwopcache";
-    let mut cache = File::open(FNAME).or_else(|_| generate_fwopcache(FNAME))?;
-    cache.seek(io::SeekFrom::Start(input as u64 * 4))?;
-
-    let mut buf = [0; 4];
-    cache.read_exact(&mut buf).map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            "Failed to find a solution in the cache",
-        )
-    })?;
-    println!("{:b}", u32::from_ne_bytes(buf));
-
-    Ok(())
+#[test]
+fn test_output_parse() {
+    static TEXT: &str = "##---|---#-|###-#|#-#--|###-#";
+    assert_eq!(output(parse(TEXT).unwrap()), TEXT);
 }
