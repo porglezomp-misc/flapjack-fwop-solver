@@ -124,10 +124,30 @@ pub fn reflect(code: u32) -> u32 {
         | (code >> 20 & MASK5)
 }
 
+pub fn apply_transform(mut x: u32, rotations: u8, should_reflect: bool) -> u32 {
+    if should_reflect {
+        x = reflect(x);
+    }
+    for _ in 0..rotations {
+        x = rotate(x);
+    }
+    x
+}
+
+pub fn apply_transform_inverse(mut x: u32, rotations: u8, should_reflect: bool) -> u32 {
+    for _ in 0..(4 - rotations) % 4 {
+        x = rotate(x);
+    }
+    if should_reflect {
+        x = reflect(x);
+    }
+    x
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-    use proptest::{bits, prop_assert, prop_assert_eq, proptest, proptest_helper};
+    use proptest::{arbitrary::any, bits, prop_assert, prop_assert_eq, proptest, proptest_helper};
 
     fn maps() -> bits::BitSetStrategy<u32> {
         bits::u32::between(0, 25)
@@ -181,6 +201,18 @@ mod test {
         fn rev5_reion(x in maps()) {
             const MASK5: u32 = (1 << 5) - 1;
             prop_assert_eq!(rev5(x), rev5(x) & MASK5);
+        }
+
+        #[test]
+        fn transform_inverses(m in maps(), rotate in 0u8..4, reflect in any::<bool>()) {
+            prop_assert_eq!(
+                m,
+                apply_transform(apply_transform_inverse(m, rotate, reflect), rotate, reflect)
+            );
+            prop_assert_eq!(
+                m,
+                apply_transform_inverse(apply_transform(m, rotate, reflect), rotate, reflect)
+            );
         }
     }
 
