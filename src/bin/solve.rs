@@ -10,31 +10,6 @@ use fwop::{generate_map, output, parse};
 
 const MASK: u32 = (1 << 25) - 1;
 
-// fn generate_fwopcache<P: AsRef<Path>>(path: P) -> io::Result<File> {
-//     println!("No game cache found, generating...");
-//     let mut file = File::create(path)?;
-//     let mut cache = BTreeMap::<u32, (u32, u32)>::new();
-//     for i in 0..1 << 25 {
-//         let map = generate_map(i);
-//         cache
-//             .entry(map)
-//             .and_modify(|(x, count)| {
-//                 let new_count = i.count_ones();
-//                 if new_count < *count {
-//                     *x = i;
-//                     *count = new_count;
-//                 }
-//             })
-//             .or_insert_with(|| (i, i.count_ones()));
-//     }
-//     for i in 0..1 << 25 {
-//         let value = cache.get(&i).map(|&x| x.0).unwrap_or(0);
-//         file.write(&value.to_ne_bytes())?;
-//     }
-//     file.flush()?;
-//     Ok(file)
-// }
-
 fn generate_fwopcache<P: AsRef<Path>>(path: P) -> io::Result<File> {
     println!("No game cache found, generating...");
     let mut file = File::create(path)?;
@@ -61,20 +36,13 @@ fn generate_fwopcache<P: AsRef<Path>>(path: P) -> io::Result<File> {
     Ok(file)
 }
 
-// fn get_entry_from_cache<F: Read, F:Seek>(cache: F) -> Option<u64> {
-
-// }
-
-// fn write_cache<F: Write>(cache: &BTreeMap<u32, (u32, u32)>, buf: &mut F) {
-
-// }
-
 fn get_entry_from_cache(cache: &mut File, x: u32) -> Option<u32> {
     let mut base = 0;
     let mut size = 1 << 23; // Num entries in cache
+                            // println!("target: {}", x);
     while size > 0 {
         size /= 2;
-        let mid = (base + size) / 2;
+        let mid = base + size;
         // get this entry from cache
         let mut buf = [0; 4];
         cache.seek(io::SeekFrom::Start(mid as u64 * 8)).unwrap();
@@ -117,15 +85,17 @@ fn get_entry_from_cache(cache: &mut File, x: u32) -> Option<u32> {
 
 fn solve_from_cache(cache: &mut File, x: u32) -> io::Result<()> {
     cache.seek(io::SeekFrom::Start(x as u64 * 4))?;
-    let mut buf = [0; 4];
-    cache.read_exact(&mut buf).map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            "Failed to find a solution in the cache",
-        )
-    })?;
-    println!("{}", output(u32::from_ne_bytes(buf)));
-    Ok(())
+    let value = get_entry_from_cache(cache, x);
+    match value {
+        Some(y) => {
+            println!("{}", output(y));
+            Ok(())
+        }
+        None => {
+            println!("Error getting value from cache.");
+            Ok(())
+        }
+    }
 }
 
 fn main() -> io::Result<()> {
