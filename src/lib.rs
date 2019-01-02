@@ -91,7 +91,11 @@ pub fn generate_map(code: u32) -> u32 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use proptest::{prop_assert, prop_assert_eq, proptest, proptest_helper};
+    use proptest::{bits, prop_assert, prop_assert_eq, proptest, proptest_helper};
+
+    fn maps() -> bits::BitSetStrategy<u32> {
+        bits::u32::between(0, 25)
+    }
 
     proptest! {
         #[test]
@@ -105,7 +109,7 @@ mod test {
         }
 
         #[test]
-        fn output_parse_inverse(x in 0u32..1<<25) {
+        fn output_parse_inverse(x in maps()) {
             prop_assert_eq!(x, parse(&output(x)).unwrap())
         }
     }
