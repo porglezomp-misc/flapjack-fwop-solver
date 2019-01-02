@@ -88,43 +88,70 @@ pub fn generate_map(code: u32) -> u32 {
     map
 }
 
-#[test]
-fn test_blit() {
-    assert_eq!(blit(0, 00), 0b0000100011);
-    assert_eq!(blit(0, 01), 0b0001000111);
-    assert_eq!(blit(0, 02), 0b0010001110);
-    assert_eq!(blit(0, 03), 0b0100011100);
-    assert_eq!(blit(0, 04), 0b1000011000);
-    assert_eq!(blit(0, 05), 0b000010001100001);
-    assert_eq!(blit(0, 06), 0b000100011100010);
-    assert_eq!(blit(0, 07), 0b001000111000100);
-    assert_eq!(blit(0, 08), 0b010001110001000);
-    assert_eq!(blit(0, 09), 0b100001100010000);
-    assert_eq!(blit(0, 10), 0b00001000110000100000);
-    assert_eq!(blit(0, 11), 0b00010001110001000000);
-    assert_eq!(blit(0, 12), 0b00100011100010000000);
-    assert_eq!(blit(0, 13), 0b01000111000100000000);
-    assert_eq!(blit(0, 14), 0b10000110001000000000);
-    assert_eq!(blit(0, 15), 0b0000100011000010000000000);
-    assert_eq!(blit(0, 16), 0b0001000111000100000000000);
-    assert_eq!(blit(0, 17), 0b0010001110001000000000000);
-    assert_eq!(blit(0, 18), 0b0100011100010000000000000);
-    assert_eq!(blit(0, 19), 0b1000011000100000000000000);
-    assert_eq!(blit(0, 20), 0b0001100001000000000000000);
-    assert_eq!(blit(0, 21), 0b0011100010000000000000000);
-    assert_eq!(blit(0, 22), 0b0111000100000000000000000);
-    assert_eq!(blit(0, 23), 0b1110001000000000000000000);
-    assert_eq!(blit(0, 24), 0b1100010000000000000000000);
-}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use proptest::{bits, prop_assert, prop_assert_eq, proptest, proptest_helper};
 
-#[test]
-fn test_generate_map() {
-    // This is right by manual inspection
-    assert_eq!(generate_map(0b100000001000001011), 4674152);
-}
+    fn maps() -> bits::BitSetStrategy<u32> {
+        bits::u32::between(0, 25)
+    }
 
-#[test]
-fn test_output_parse() {
-    static TEXT: &str = "##---|---#-|###-#|#-#--|###-#";
-    assert_eq!(output(parse(TEXT).unwrap()), TEXT);
+    proptest! {
+        #[test]
+        fn parse_doesnt_crash(ref s in r#"\PC*"#) {
+            let _ = parse(s);
+        }
+
+        #[test]
+        fn parse_output_inverse(ref s in r#"[#-]{5}(\|[#-]{5}){4}"#) {
+            prop_assert_eq!(s, &output(parse(s).unwrap()));
+        }
+
+        #[test]
+        fn output_parse_inverse(x in maps()) {
+            prop_assert_eq!(x, parse(&output(x)).unwrap())
+        }
+    }
+
+    #[test]
+    fn test_blit() {
+        assert_eq!(blit(0, 00), 0b0000100011);
+        assert_eq!(blit(0, 01), 0b0001000111);
+        assert_eq!(blit(0, 02), 0b0010001110);
+        assert_eq!(blit(0, 03), 0b0100011100);
+        assert_eq!(blit(0, 04), 0b1000011000);
+        assert_eq!(blit(0, 05), 0b000010001100001);
+        assert_eq!(blit(0, 06), 0b000100011100010);
+        assert_eq!(blit(0, 07), 0b001000111000100);
+        assert_eq!(blit(0, 08), 0b010001110001000);
+        assert_eq!(blit(0, 09), 0b100001100010000);
+        assert_eq!(blit(0, 10), 0b00001000110000100000);
+        assert_eq!(blit(0, 11), 0b00010001110001000000);
+        assert_eq!(blit(0, 12), 0b00100011100010000000);
+        assert_eq!(blit(0, 13), 0b01000111000100000000);
+        assert_eq!(blit(0, 14), 0b10000110001000000000);
+        assert_eq!(blit(0, 15), 0b0000100011000010000000000);
+        assert_eq!(blit(0, 16), 0b0001000111000100000000000);
+        assert_eq!(blit(0, 17), 0b0010001110001000000000000);
+        assert_eq!(blit(0, 18), 0b0100011100010000000000000);
+        assert_eq!(blit(0, 19), 0b1000011000100000000000000);
+        assert_eq!(blit(0, 20), 0b0001100001000000000000000);
+        assert_eq!(blit(0, 21), 0b0011100010000000000000000);
+        assert_eq!(blit(0, 22), 0b0111000100000000000000000);
+        assert_eq!(blit(0, 23), 0b1110001000000000000000000);
+        assert_eq!(blit(0, 24), 0b1100010000000000000000000);
+    }
+
+    #[test]
+    fn test_generate_map() {
+        // This is right by manual inspection
+        assert_eq!(generate_map(0b100000001000001011), 4674152);
+    }
+
+    #[test]
+    fn test_output_parse() {
+        static TEXT: &str = "##---|---#-|###-#|#-#--|###-#";
+        assert_eq!(output(parse(TEXT).unwrap()), TEXT);
+    }
 }
